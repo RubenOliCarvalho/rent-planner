@@ -52,7 +52,8 @@
       <div class="grid4">
         <label class="field"><span>Gross salary per month (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="pay.gross"></label>
         <label class="field"><span>Pension or RA deducted by employer (R)</span><input type="number" inputmode="decimal" min="0" step="100" data-path="pay.retirement"></label>
-        <label class="field"><span>People on medical aid deducted by employer</span><input type="number" min="0" step="1" data-path="pay.medicalMembers"></label>
+        <label class="field"><span>Medical aid: number of people covered</span><input type="number" min="0" max="20" step="1" data-path="pay.medicalMembers" placeholder="0">
+          <small>A count, not an amount: you plus dependants, if your employer deducts it.</small></label>
         <label class="field"><span>Your age</span><input type="number" min="16" max="100" step="1" data-path="pay.age"></label>
       </div>
       <div class="est-out" id="estOut"></div>
@@ -77,6 +78,13 @@
         <h3>Rent limit checks</h3>
         <p class="sub">The lowest of the checks you keep switched on sets your limit.</p>
         <div id="rules"></div>
+        <h3>Savings for the move</h3>
+        <div class="grid2 tight">
+          <label class="field"><span>Savings you can use today (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="move.savings"></label>
+          <label class="field"><span>Keep untouched (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="move.floor">
+            <small>An emergency cushion the move never spends.</small></label>
+        </div>
+        <label class="check"><input type="checkbox" data-path="move.countLeftover"> Also count what today's budget leaves over each month</label>
       </div>
       <div>
         <h3>Cash you need before moving in</h3>
@@ -89,13 +97,6 @@
           <label class="field"><span>Contingency on items (%)</span><input type="number" min="0" step="1" data-path="move.contingencyPct" data-pct="1"></label>
           <label class="field"><span>Notice at your current home (months)</span><input type="number" min="0" step="1" data-path="move.noticeMonths"></label>
         </div>
-        <h3>Paying for it</h3>
-        <div class="grid2 tight">
-          <label class="field"><span>Savings you can use today (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="move.savings"></label>
-          <label class="field"><span>Keep untouched (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="move.floor">
-            <small>An emergency cushion the move never spends.</small></label>
-        </div>
-        <label class="check"><input type="checkbox" data-path="move.countLeftover"> Also count what today's budget leaves over each month</label>
         <div id="moveOut" class="move-out"></div>
       </div>
     </div>

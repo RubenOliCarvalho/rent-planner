@@ -1,5 +1,5 @@
 // Rent planner app. Everything lives in memory in this tab: nothing is stored or sent anywhere.
-import { takeHome, TAX_TABLE } from "./tax.js";
+import { takeHome, medicalCreditMonthly, TAX_TABLE } from "./tax.js";
 import { RENT_ID, MOVE_SAVING_ID, budgetTotals, rentLimit, fit, moveCost, earliestMove, checkListing, monthlyMoveSaving, fmt } from "./planner.js";
 import { GROUPS, AREAS, SITES, defaultPlan } from "./defaults.js";
 
@@ -81,10 +81,15 @@ function syncRentInputs(src) {
 function renderEstimator() {
   const p = plan.pay;
   if (!p.gross) { $("#estOut").innerHTML = `<p class="sub">Enter your gross salary to see an estimate.</p>`; return; }
-  const t = takeHome({ gross: p.gross, retirement: p.retirement, medicalMembers: p.medicalMembers, age: p.age || 30 });
-  $("#estOut").innerHTML = `<table>
+  // A rand amount typed into the people-count box would give a huge credit and zero PAYE: ignore it and say so.
+  const members = Math.floor(p.medicalMembers || 0);
+  const badMembers = members > 20;
+  const medMembers = badMembers ? 0 : members;
+  const t = takeHome({ gross: p.gross, retirement: p.retirement, medicalMembers: medMembers, age: p.age || 30 });
+  const credit = medicalCreditMonthly(medMembers);
+  $("#estOut").innerHTML = `${badMembers ? `<p class="sub"><b>Medical aid people is ${members}.</b> That looks like a rand amount, so it is ignored. Enter the number of people covered instead.</p>` : ""}<table>
     <tr><td>Gross salary</td><td class="num">${R(t.gross, 2)}</td></tr>
-    <tr><td>PAYE (income tax)</td><td class="num">−${R(t.paye, 2)}</td></tr>
+    <tr><td>PAYE (income tax)${credit ? ` <small>after ${R(credit, 2)} medical tax credit</small>` : ""}</td><td class="num">−${R(t.paye, 2)}</td></tr>
     <tr><td>UIF</td><td class="num">−${R(t.uif, 2)}</td></tr>
     ${t.retirement ? `<tr><td>Pension / RA</td><td class="num">−${R(t.retirement, 2)}</td></tr>` : ""}
     <tr><td><b>Estimated take-home</b></td><td class="num"><b>${R(t.net, 2)}</b></td></tr></table>
