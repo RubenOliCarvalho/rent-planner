@@ -231,17 +231,17 @@ $("#items").addEventListener("click", e => {
   if (e.target.dataset.idel != null) { plan.move.items.splice(+e.target.dataset.idel, 1); renderItems(); markDirty(); update(); }
 });
 
-function renderMoveOut(em) {
+function renderMoveOut(em, rent, atLimit) {
   const c = em.cost, m = plan.move;
   const lines = [
-    [`Deposit (${fmt(m.depositMonths, 1)} × ${R(m.rent)})`, c.deposit],
+    [`Deposit (${fmt(m.depositMonths, 1)} × ${R(rent)}${atLimit ? ", your limit" : ""})`, c.deposit],
     m.overlapMonths ? [`Paying both rents (${fmt(m.overlapMonths, 1)} months)`, c.overlap] : null,
     ["Items above", c.items],
     [`Contingency (${Math.round(m.contingencyPct * 100)}% of items)`, c.contingency],
   ].filter(Boolean);
   const when = em.moveMonth ? `You can move in <b>${monthName(em.moveMonth)}</b>${em.monthsToSave ? ` after ${em.monthsToSave} month${em.monthsToSave === 1 ? "" : "s"} of saving` : ""}. Pay the deposit by the end of the month before.`
     : em.saving > 0 ? `Not within 5 years at ${R(em.saving)} a month.` : `Add a monthly amount on the <b>Saving for the move</b> line in step 2 (or tick the box above) to see when.`;
-  $("#moveOut").innerHTML = `<table>${lines.map(([k, v]) => `<tr><td>${k}</td><td class="num">${R(v)}</td></tr>`).join("")}
+  $("#moveOut").innerHTML = `${atLimit ? `<p class="sub">No rent entered, so these figures use your limit of ${R(rent)}.</p>` : ""}<table>${lines.map(([k, v]) => `<tr><td>${k}</td><td class="num">${R(v)}</td></tr>`).join("")}
     <tr class="tot"><td>Cash needed</td><td class="num">${R(c.total)}</td></tr>
     <tr><td>Usable today (savings minus what you keep)</td><td class="num">${R(em.usableNow)}</td></tr>
     <tr><td>Saved each month until the move</td><td class="num">${R(em.saving)}</td></tr></table>
@@ -253,21 +253,27 @@ function renderMoveOut(em) {
 // Summary bar and overall update
 // ---------------------------------------------------------------------------
 function update() {
-  const b = budgetTotals(plan), rl = rentLimit(plan), em = earliestMove(plan);
+  const b = budgetTotals(plan), rl = rentLimit(plan);
+  // With no rent typed in, plan at the limit; a typed rent always takes over.
+  const atLimit = !plan.move.rent && rl.limit > 0;
+  const rent = atLimit ? rl.limit : plan.move.rent;
+  const em = earliestMove(plan, { rent });
   const f = fit(plan.move.rent, rl.limit, plan.rules.stretchPct);
   $("#sNet").textContent = R(b.net);
   $("#sLimit").textContent = R(rl.limit);
   const bind = rl.rules.find(r => r.key === rl.binding);
   $("#sLimitWhy").textContent = bind ? `Set by: ${bind.label.toLowerCase()}` : "Switch on a check in step 3";
   $("#sCash").textContent = R(em.cost.total);
-  $("#sCashWhy").textContent = plan.move.rent ? `At ${R(plan.move.rent)} rent` : "Enter a rent in step 3";
+  $("#sCashWhy").textContent = plan.move.rent ? `At ${R(plan.move.rent)} rent` : atLimit ? `At your limit of ${R(rent)}` : "Enter a rent in step 3";
   $("#sWhen").textContent = em.moveMonth ? monthName(em.moveMonth) : "–";
   $("#sWhenWhy").textContent = em.moveMonth ? (em.monthsToSave ? `${em.monthsToSave} months of saving` : "You have enough now") :
     em.saving > 0 ? "Not within 5 years" : "Needs a monthly saving";
   const limitBox = $("#sLimit").parentElement;
   limitBox.className = "sum" + (plan.move.rent && rl.limit != null ? " " + f : "");
   const note = $("#fitNote");
-  if (!plan.move.rent || rl.limit == null) { note.className = "note"; note.textContent = ""; }
+  $("#planRent").placeholder = rl.limit > 0 ? `Your limit: ${fmt(rl.limit)}` : "";
+  if (atLimit) { note.className = "note"; note.textContent = `Planning at your limit of ${R(rent)}. Type a rent to plan for a specific amount.`; }
+  else if (!plan.move.rent || rl.limit == null) { note.className = "note"; note.textContent = ""; }
   else {
     note.className = "note " + f;
     note.textContent = f === "fits" ? `${R(plan.move.rent)} fits: ${R(rl.limit - plan.move.rent)} under your limit, leaving ${R(b.afterLeft)} a month after the move.`
@@ -276,7 +282,7 @@ function update() {
   }
   renderBudgetTotals();
   renderEstimator();
-  renderMoveOut(em);
+  renderMoveOut(em, rent, atLimit);
   // rule amounts change with every number: refresh them unless the person is typing in that table
   if (!$("#rules").contains(document.activeElement)) renderRules();
   else $$("#rules td.num").forEach((td, i) => { const res = rl.rules.find(x => x.key === ["budget", "share", "landlord"][i]); td.firstChild.textContent = res ? R(res.max) : "off"; });
