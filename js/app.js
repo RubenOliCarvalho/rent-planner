@@ -1,4 +1,4 @@
-// Rent planner app. Everything lives in memory in this tab: nothing is stored or sent anywhere.
+// Rent planner app. The plan is kept in this browser (localStorage) so a reload keeps it; nothing is sent anywhere.
 import { takeHome, medicalCreditMonthly, TAX_TABLE } from "./tax.js";
 import { RENT_ID, MOVE_SAVING_ID, budgetTotals, rentLimit, fit, moveCost, earliestMove, checkListing, monthlyMoveSaving, fmt } from "./planner.js";
 import { GROUPS, AREAS, SITES, defaultPlan } from "./defaults.js";
@@ -28,7 +28,24 @@ function setPath(path, v) {
   for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]];
   o[ks[ks.length - 1]] = v;
 }
-function markDirty() { dirty = true; }
+// Saved in this browser only. If storage is blocked (private window, blocked site data) the app still works,
+// and falls back to warning before the tab closes.
+const STORE_KEY = "rent-planner:plan";
+let canStore = true, saveTimer = null;
+function savePlan() {
+  clearTimeout(saveTimer);
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(plan)); dirty = false; }
+  catch { canStore = false; showStorageNote(); }
+}
+function readSavedPlan() {
+  try { const s = localStorage.getItem(STORE_KEY); return s ? JSON.parse(s) : null; } catch { canStore = false; return null; }
+}
+function clearSavedPlan() { try { localStorage.removeItem(STORE_KEY); } catch {} }
+function showStorageNote() {
+  const el = document.getElementById("privacy");
+  if (el) el.innerHTML = `<strong>This browser isn't letting the page save.</strong> Your numbers are gone when you close or reload the tab. Download your plan to keep it.`;
+}
+function markDirty() { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(savePlan, 300); }
 
 // ---------------------------------------------------------------------------
 // Bound inputs (data-path="pay.net" etc.)
@@ -485,7 +502,7 @@ $("#listings").addEventListener("click", e => {
 });
 
 // ---------------------------------------------------------------------------
-// Download, load and share a plan (no storage anywhere)
+// Download, load and share a plan
 // ---------------------------------------------------------------------------
 function validPlan(p) {
   const d = defaultPlan();
@@ -504,7 +521,7 @@ function validPlan(p) {
         property24: SITE_URL.property24.test(a.property24 || "") ? a.property24 : null, privateproperty: SITE_URL.privateproperty.test(a.privateproperty || "") ? a.privateproperty : null })) : [] },
   };
 }
-function loadPlan(p, msg) { plan = validPlan(p); dirty = false; renderAll(); toast(msg); }
+function loadPlan(p, msg) { plan = validPlan(p); renderAll(); savePlan(); toast(msg); }
 
 $("#dlPlan").onclick = () => {
   const blob = new Blob([JSON.stringify({ ...plan, savedAt: new Date().toISOString() }, null, 1)], { type: "application/json" });
@@ -539,19 +556,29 @@ $("#shareLink").onclick = async () => {
 };
 $("#resetPlan").onclick = () => {
   if (!confirm("Clear everything on this page and start again?")) return;
+  clearTimeout(saveTimer); clearSavedPlan();
   plan = defaultPlan(); listings = []; dirty = false; renderAll(); toast("Started over");
 };
-window.addEventListener("beforeunload", e => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", e => {
+  if (canStore) savePlan();                    // flush a save still waiting on the timer
+  if (dirty && !canStore) { e.preventDefault(); e.returnValue = ""; }
+});
 
 // ---------------------------------------------------------------------------
 function renderAll() { renderBudget(); renderItems(); renderAreas(); renderSiteLinks(); renderRules(); update(); }
 
 async function start() {
   const m = location.hash.match(/^#plan=([01]\.[A-Za-z0-9_-]+)/);
+  const saved = readSavedPlan();
+  if (saved) { try { plan = validPlan(saved); } catch { clearSavedPlan(); } }
+  if (!canStore) showStorageNote();
   renderAll();
   if (m) {
-    try { loadPlan(await unpackPlan(m[1]), "Plan loaded from the link"); }
-    catch { toast("That plan link is incomplete or damaged"); }
+    // don't silently replace a plan already saved in this browser
+    if (!saved || confirm("Replace the plan saved in this browser with the one in this link?")) {
+      try { loadPlan(await unpackPlan(m[1]), "Plan loaded from the link"); }
+      catch { toast("That plan link is incomplete or damaged"); }
+    }
     history.replaceState(null, "", location.pathname);   // keep the numbers out of the address bar
   }
   setupBookmarklet();

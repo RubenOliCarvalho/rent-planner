@@ -11,7 +11,8 @@ A free, private planner for renting in South Africa:
    Property24 and Private Property, then send the listings back with the **Send to Rent planner** bookmark.
    Each listing is checked against the filters and the budget.
 
-**Nothing is saved or sent anywhere.** Everything runs in the visitor's browser tab. People keep a plan by
+**Nothing is sent anywhere.** Everything runs in the visitor's browser. The plan is saved in that browser's
+`localStorage`, so a reload keeps it, and **Start over** clears it. People move a plan to another device by
 downloading it (a `.json` file) or with a share link. The plan sits in the part of the link after `#`, which
 browsers never send to a server.
 
