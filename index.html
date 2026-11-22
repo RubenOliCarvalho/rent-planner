@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rent planner: what can I afford, and when can I move?</title>
+<meta name="description" content="Plan a move in South Africa: build your monthly budget, see the highest rent that fits, the cash you need to move in, and check rentals against it. Nothing you enter is saved or sent anywhere.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-row">
+    <div>
+      <h1>Rent planner</h1>
+      <p class="tag">What rent can you afford, how much cash do you need, and when can you move?</p>
+    </div>
+    <div class="plan-actions">
+      <button class="btn" id="dlPlan" type="button">Download my plan</button>
+      <label class="btn" for="loadPlan">Load a plan</label><input type="file" id="loadPlan" accept=".json,application/json" hidden>
+      <button class="btn" id="shareLink" type="button">Copy share link</button>
+      <button class="btn ghost" id="resetPlan" type="button">Start over</button>
+    </div>
+  </div>
+  <div class="wrap privacy" id="privacy">
+    <strong>Nothing is saved.</strong> Your numbers stay in this browser tab and are gone when you close it.
+    Download your plan to keep it.
+  </div>
+</header>
+
+<nav class="summary" aria-label="Your plan at a glance">
+  <div class="wrap summary-row">
+    <div class="sum"><span>Income each month</span><b id="sNet">–</b></div>
+    <div class="sum"><span>Highest rent that fits</span><b id="sLimit">–</b><small id="sLimitWhy"></small></div>
+    <div class="sum"><span>Cash needed to move in</span><b id="sCash">–</b><small id="sCashWhy"></small></div>
+    <div class="sum"><span>Earliest you can move</span><b id="sWhen">–</b><small id="sWhenWhy"></small></div>
+  </div>
+</nav>
+
+<main class="wrap">
+  <section class="card" id="sec-income" aria-labelledby="h-income">
+    <h2 id="h-income"><span class="n">1</span> Your income</h2>
+    <div class="grid2">
+      <label class="field"><span>Take-home pay per month (R)</span>
+        <input type="number" inputmode="decimal" min="0" step="100" data-path="pay.net" placeholder="From your payslip">
+        <small>What lands in your bank account. Use the estimator if you only know your gross salary.</small></label>
+      <label class="field"><span>Other income after tax per month (R)</span>
+        <input type="number" inputmode="decimal" min="0" step="100" data-path="pay.other" placeholder="0">
+        <small>Maintenance received, a second job, rental income. Leave out anything not guaranteed.</small></label>
+    </div>
+    <details class="est" id="estimator">
+      <summary>Estimate take-home from gross salary (SARS 2026/27)</summary>
+      <div class="grid4">
+        <label class="field"><span>Gross salary per month (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="pay.gross"></label>
+        <label class="field"><span>Pension or RA deducted by employer (R)</span><input type="number" inputmode="decimal" min="0" step="100" data-path="pay.retirement"></label>
+        <label class="field"><span>People on medical aid deducted by employer</span><input type="number" min="0" step="1" data-path="pay.medicalMembers"></label>
+        <label class="field"><span>Your age</span><input type="number" min="16" max="100" step="1" data-path="pay.age"></label>
+      </div>
+      <div class="est-out" id="estOut"></div>
+    </details>
+  </section>
+
+  <section class="card" id="sec-budget" aria-labelledby="h-budget">
+    <h2 id="h-budget"><span class="n">2</span> Your monthly budget</h2>
+    <p class="sub">Fill in what you spend now, and what you expect after the move. Rows start the same: change the ones the move affects (rent, transport, school, utilities).
+      <b>Rent after the move</b> is the rent you plan for in step 3, and editing it in either place changes both.</p>
+    <div class="row-actions"><button class="btn small" id="copyNow" type="button">Copy "now" into "after the move"</button></div>
+    <div id="budget"></div>
+  </section>
+
+  <section class="card" id="sec-rent" aria-labelledby="h-rent">
+    <h2 id="h-rent"><span class="n">3</span> Rent you can afford and cash to move in</h2>
+    <div class="grid2">
+      <div>
+        <label class="field big"><span>Rent to plan for (R per month)</span>
+          <input type="number" inputmode="decimal" min="0" step="250" data-path="move.rent" id="planRent"></label>
+        <div id="fitNote" class="note"></div>
+        <h3>Rent limit checks</h3>
+        <p class="sub">The lowest of the checks you keep switched on sets your limit.</p>
+        <div id="rules"></div>
+      </div>
+      <div>
+        <h3>Cash you need before moving in</h3>
+        <div class="grid2 tight">
+          <label class="field"><span>Deposit (months of rent)</span><input type="number" min="0" step="0.5" data-path="move.depositMonths"></label>
+          <label class="field"><span>Months paying both rents</span><input type="number" min="0" step="0.5" data-path="move.overlapMonths"></label>
+        </div>
+        <div id="items"></div>
+        <div class="grid2 tight">
+          <label class="field"><span>Contingency on items (%)</span><input type="number" min="0" step="1" data-path="move.contingencyPct" data-pct="1"></label>
+          <label class="field"><span>Notice at your current home (months)</span><input type="number" min="0" step="1" data-path="move.noticeMonths"></label>
+        </div>
+        <h3>Paying for it</h3>
+        <div class="grid2 tight">
+          <label class="field"><span>Savings you can use today (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="move.savings"></label>
+          <label class="field"><span>Keep untouched (R)</span><input type="number" inputmode="decimal" min="0" step="500" data-path="move.floor">
+            <small>An emergency cushion the move never spends.</small></label>
+        </div>
+        <label class="check"><input type="checkbox" data-path="move.countLeftover"> Also count what today's budget leaves over each month</label>
+        <div id="moveOut" class="move-out"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-search" aria-labelledby="h-search">
+    <h2 id="h-search"><span class="n">4</span> Find a rental</h2>
+    <p class="sub">Choose what you need, open the searches on the property sites, then send the listings back here with the
+      <b>Send to Rent planner</b> button. The sites are opened in your own browser: this page never fetches them.</p>
+    <div class="grid3">
+      <fieldset class="field"><legend>Areas</legend><div id="areas" class="area-list"></div>
+        <details class="add-area"><summary>Add another area</summary>
+          <p class="sub">Search for the area on Property24 or Private Property, then paste the results page link here.</p>
+          <div class="inline"><input type="url" id="areaUrl" placeholder="https://www.property24.com/to-rent/…">
+            <button class="btn small" id="areaAdd" type="button">Add</button></div>
+          <div id="areaErr" class="err" role="alert"></div>
+        </details>
+      </fieldset>
+      <div>
+        <fieldset class="field"><legend>Property type</legend>
+          <label class="check"><input type="checkbox" data-type="apartment"> Apartment / flat</label>
+          <label class="check"><input type="checkbox" data-type="townhouse"> Townhouse</label>
+          <label class="check"><input type="checkbox" data-type="house"> House / cottage</label>
+        </fieldset>
+        <div class="grid2 tight">
+          <label class="field"><span>Bedrooms (at least)</span><input type="number" min="0" step="1" data-path="search.bedsMin"></label>
+          <label class="field"><span>Max rent (R)</span><input type="number" min="0" step="250" data-path="search.maxRent" id="maxRent"></label>
+        </div>
+      </div>
+      <div>
+        <fieldset class="field"><legend>Must-haves</legend>
+          <label class="check"><input type="checkbox" data-path="search.pets"> Pets allowed</label>
+          <label class="check"><input type="checkbox" data-path="search.unfurnished"> Unfurnished</label>
+          <label class="field inline-num"><span>Parking bays (at least)</span><input type="number" min="0" step="1" data-path="search.parkingMin"></label>
+          <small>Room-by-room and shared lets are always left out.</small>
+        </fieldset>
+        <fieldset class="field"><legend>Sites</legend>
+          <label class="check"><input type="checkbox" data-site="property24"> Property24</label>
+          <label class="check"><input type="checkbox" data-site="privateproperty"> Private Property</label>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><h3>a. Open the searches</h3><div id="siteLinks"></div></div>
+      <div class="step"><h3>b. Send the listings back</h3>
+        <p class="sub">Drag this button to your bookmarks bar once (Ctrl+Shift+B shows the bar):</p>
+        <p><a class="bookmarklet" id="bookmarklet" href="#">Send to Rent planner</a></p>
+        <p class="sub">On a results page, click it to send every listing on the page. On a single listing, click it to add the details
+          results pages leave out (pets, furnishing, deposit). If the site tab was not opened from here, the button copies the listings
+          instead: paste them below.</p>
+        <details><summary>Paste listings</summary>
+          <textarea id="pasteBox" rows="3" placeholder="Paste what the button copied"></textarea>
+          <button class="btn small" id="pasteGo" type="button">Add listings</button>
+          <div id="pasteErr" class="err" role="alert"></div>
+        </details>
+      </div>
+      <div class="step"><h3>c. Or add one yourself</h3>
+        <form id="manual" class="manual">
+          <input name="url" type="url" placeholder="Listing link (optional)">
+          <input name="suburb" placeholder="Suburb" required>
+          <div class="inline"><input name="rent" type="number" min="0" placeholder="Rent (R)" required>
+            <input name="beds" type="number" min="0" step="0.5" placeholder="Beds"></div>
+          <div class="inline"><input name="parking" type="number" min="0" placeholder="Parking">
+            <input name="deposit" type="number" min="0" placeholder="Deposit (R)"></div>
+          <div class="inline"><select name="pets"><option value="unknown">Pets: not sure</option><option value="yes">Pets allowed</option><option value="no">No pets</option></select>
+            <select name="furnished"><option value="unknown">Furnished: not sure</option><option value="no">Unfurnished</option><option value="yes">Furnished</option></select></div>
+          <label class="field"><span>Available from</span><input name="available" type="date"></label>
+          <button class="btn small" type="submit">Add listing</button>
+          <div id="manualErr" class="err" role="alert"></div>
+        </form>
+      </div>
+    </div>
+
+    <div id="listings"></div>
+  </section>
+
+  <footer class="foot">
+    <p>Estimates only, not financial or tax advice. Tax uses the SARS 2026/27 tables. Check deposits, fees and pet rules with the agent.</p>
+    <p>Listings come from pages you open yourself on Property24 and Private Property. Their content belongs to them and their agents.
+      This page isn't connected to either site.</p>
+  </footer>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="js/parsers.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
